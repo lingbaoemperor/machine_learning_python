@@ -6,12 +6,12 @@ example on datacamp,
 only for recalling some functions.
 """
 import pandas as pd
-import datetime
 from statsmodels.tsa.arima_model import ARMA,ARIMA
 from statsmodels.graphics.tsaplots import plot_acf,plot_pacf
 import matplotlib.pyplot as plt
 from statsmodels.tsa.stattools import adfuller
 
+#1.stocks.
 df = pd.ExcelFile('./data/stocks_ARMA_simple_demo.xlsx').parse('Sheet1',header=None)
 #391 rows.
 df.iloc[0,0] = 0
@@ -38,32 +38,45 @@ ma1 = ARMA(pct,order=(0,1))
 res = ma1.fit()
 print(res.params)
 
-# 0 hypo: random walk with drift.
-result = adfuller(df['CLOSE'])
-print(result[1])
+print(('\n'*80))
+#########################################################################
+#2.temperature.
+df = pd.ExcelFile('./data/temperature_ARMA_simple_demo.xlsx').parse('Sheet1',header=None)
+df.columns = ['years','tavg']
+df = df.set_index('years')
 
-#p > 0.05. 一阶差分.
+#自相关，和偏相关图不是截尾，也不是拖尾.p > 0.05.
+df.index = pd.to_datetime(df.index,format='%Y')     #to_datetime
+df.plot()
+plt.show()
+
+#0 hypo: random walk with drift.
+result = adfuller(df['tavg'])
+print('adf test:',result[1])
+
+#p>0.5,非平稳.一阶差分.
 chg = df.diff()
 chg = chg.dropna()
-fig,axes = plt.subplots(2,1)
-plot_acf(chg,lags=30,ax=axes[0])
-plot_pacf(chg,lags=30,ax=axes[1])
+fix,axes = plt.subplots(2,1)
+plot_acf(chg,lags=20,ax=axes[0])
+plot_pacf(chg,lags=20,ax=axes[1])
+plt.show()
 
 #AR(1).
 mod_ar1 = ARMA(chg,order=(1,0))
 res_ar1 = mod_ar1.fit()
-print("AIC of AR(1):",res_ar1.aic)
-#MA(1).
+print('AIC of AR(1):',res_ar1.aic)
+#AR(2).
 mod_ar2 = ARMA(chg,order=(2,0))
 res_ar2 = mod_ar2.fit()
-print("AIC of AR(2):",res_ar2.aic)
+print('AIC of AR(2):',res_ar2.aic)
 #ARMA(1,1).
 mod_arma11 = ARMA(chg,order=(1,1))
 res_arma11 = mod_arma11.fit()
-print("AIC of ARMA(1,1):",res_arma11.aic)
+print('AIC of ARMA(1,1):',res_arma11.aic)
 
 #forcast. ARIMA.
-mod = ARIMA(chg,order=(1,1,1))         #order(p,d,q) or(p,q) arima定义.
+mod = ARIMA(df,order=(1,1,1))          #order(p,d,q) or(p,q) arima定义.
 res = mod.fit()
-res.plot_predict(start='2017-09-01 11:23:00',end='2017-09-01 15:59:00')
+res.plot_predict(start='1872-01-01',end='2046-01-01')
 plt.show()
